@@ -43,12 +43,17 @@ func main() {
 		log.Fatalf("Failed to connect to MySQL server: %v", err)
 	}
 	defer tmpDB.Close()
+	// Check if mysql is up as sql.Open()  above does not do it immediately
+	if err = tmpDB.Ping(); err != nil {
+		log.Fatalf("Failed to connect to MySQL server (ping failed): %v", err)
+	}
 
+	// Create a database
 	_, err = tmpDB.Exec("CREATE DATABASE IF NOT EXISTS " + dbName)
 	if err != nil {
 		log.Fatalf("Failed to create database: %v", err)
 	}
-	log.Printf("Database %s ensured.", dbName)
+	log.Printf("Database %s created.", dbName)
 
 	// Now connect to the DB
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, pass, host, port, dbName)
@@ -87,19 +92,19 @@ func main() {
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		var n Node
-		if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
+		var newNode Node
+		if err := json.NewDecoder(r.Body).Decode(&newNode); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
-		if err := validate.Struct(n); err != nil {
+		if err := validate.Struct(newNode); err != nil {
 			http.Error(w, "Missing or invalid fields: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		_, err := db.Exec(`INSERT INTO nodes (nodeID, nodeIP, nodeKernel, nodeOS, nodePxVersion)
 			VALUES (?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE nodeIP=VALUES(nodeIP), nodeKernel=VALUES(nodeKernel), nodeOS=VALUES(nodeOS), nodePxVersion=VALUES(nodePxVersion)`,
-			n.NodeID, n.NodeIP, n.NodeKernel, n.NodeOS, n.NodePxVersion)
+			newNode.NodeID, newNode.NodeIP, newNode.NodeKernel, newNode.NodeOS, newNode.NodePxVersion)
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -126,7 +131,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(n)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+	} //end of switch
 }
 
 func nodesHandler(w http.ResponseWriter, r *http.Request) {
