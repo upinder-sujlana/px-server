@@ -97,6 +97,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
+		//use validate package reflection of the orginal Node DS to check on the required fields in the DS
 		if err := validate.Struct(newNode); err != nil {
 			http.Error(w, "Missing or invalid fields: "+err.Error(), http.StatusBadRequest)
 			return
@@ -109,6 +110,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		//Made it all this way so the node is created. Send back a static HTTP 201 to the client for resource created.
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprintln(w, "Node saved")
 	case "GET":
@@ -117,9 +119,9 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Missing id parameter", http.StatusBadRequest)
 			return
 		}
-		var n Node
+		var queriednode Node
 		err := db.QueryRow(`SELECT nodeID, nodeIP, nodeKernel, nodeOS, nodePxVersion FROM nodes WHERE nodeID = ?`, nodeID).
-			Scan(&n.NodeID, &n.NodeIP, &n.NodeKernel, &n.NodeOS, &n.NodePxVersion)
+			Scan(&queriednode.NodeID, &queriednode.NodeIP, &queriednode.NodeKernel, &queriednode.NodeOS, &queriednode.NodePxVersion)
 		if err == sql.ErrNoRows {
 			http.Error(w, "Node not found", http.StatusNotFound)
 			return
@@ -128,7 +130,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(n)
+		json.NewEncoder(w).Encode(queriednode)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	} //end of switch
