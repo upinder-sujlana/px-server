@@ -70,13 +70,13 @@ func main() {
 
 	// Create table if not exists
 	createTable := `
-	CREATE TABLE IF NOT EXISTS nodes (
-		nodeID VARCHAR(64) PRIMARY KEY,
-		nodeIP VARCHAR(64),
-		nodeKernel VARCHAR(128),
-		nodeOS VARCHAR(128),
-		nodePxVersion VARCHAR(64)
-	)`
+    CREATE TABLE IF NOT EXISTS nodes (
+        nodeID VARCHAR(64) PRIMARY KEY,
+        nodeIP VARCHAR(64),
+        nodeKernel VARCHAR(128),
+        nodeOS VARCHAR(128),
+        nodePxVersion VARCHAR(64)
+    )`
 	if _, err := db.Exec(createTable); err != nil {
 		log.Fatalf("Failed to create table: %v", err)
 	}
@@ -103,8 +103,8 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, err := db.Exec(`INSERT INTO nodes (nodeID, nodeIP, nodeKernel, nodeOS, nodePxVersion)
-			VALUES (?, ?, ?, ?, ?)
-			ON DUPLICATE KEY UPDATE nodeIP=VALUES(nodeIP), nodeKernel=VALUES(nodeKernel), nodeOS=VALUES(nodeOS), nodePxVersion=VALUES(nodePxVersion)`,
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE nodeIP=VALUES(nodeIP), nodeKernel=VALUES(nodeKernel), nodeOS=VALUES(nodeOS), nodePxVersion=VALUES(nodePxVersion)`,
 			newNode.NodeID, newNode.NodeIP, newNode.NodeKernel, newNode.NodeOS, newNode.NodePxVersion)
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
@@ -131,6 +131,32 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(queriednode)
+	case "DELETE":
+		nodeID := r.URL.Query().Get("id")
+		if nodeID == "" {
+			http.Error(w, "Missing id parameter", http.StatusBadRequest)
+			return
+		}
+
+		result, err := db.Exec(`DELETE FROM nodes WHERE nodeID = ?`, nodeID)
+		if err != nil {
+			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			http.Error(w, "Failed to get rows affected: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if rowsAffected == 0 {
+			http.Error(w, "Node not found for deletion", http.StatusNotFound)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Node deleted successfully")
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	} //end of switch
