@@ -137,13 +137,13 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Missing id parameter", http.StatusBadRequest)
 			return
 		}
-
+		// Below doing DELETE directly for Atomicity and Race Conditions
 		result, err := db.Exec(`DELETE FROM nodes WHERE nodeID = ?`, nodeID)
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		// check if any row in the table got affected
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
 			http.Error(w, "Failed to get rows affected: "+err.Error(), http.StatusInternalServerError)
