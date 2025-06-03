@@ -85,8 +85,15 @@ func main() {
 
 	http.HandleFunc("/node", nodeHandler)
 	http.HandleFunc("/nodes", nodesHandler)
-	log.Println("Server running at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	//start the server and throw a fatal in case of failure
+	log.Println("Server starting at http://localhost:8080")
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		// Only log.Fatal if ListenAndServe actually returns an error.
+		log.Fatalf("Server failed to start: %v", err)
+	}
+
 }
 
 func nodeHandler(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +120,7 @@ func nodeHandler(w http.ResponseWriter, r *http.Request) {
 		//Made it all this way so the node is created. Send back a static HTTP 201 to the client for resource created.
 		w.WriteHeader(http.StatusCreated)
 		fmt.Fprintln(w, "Node saved")
+		log.Printf("Node %s saved successfully.", newNode.NodeID)
 	case "GET":
 		nodeID := r.URL.Query().Get("id")
 		if nodeID == "" {
